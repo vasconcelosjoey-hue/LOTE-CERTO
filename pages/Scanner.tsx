@@ -4,28 +4,21 @@ import { GoogleGenAI } from "@google/genai";
 import { 
   ChevronLeft, 
   Camera, 
-  Loader2, 
   CheckCircle2, 
   RefreshCcw, 
   Scan,
-  AlertTriangle,
   X,
-  Barcode,
-  ArrowRight,
-  Tag,
-  Pencil,
-  Calendar,
-  Package,
   PackageCheck,
   DollarSign,
   Plus,
-  Image as ImageIcon,
+  ArrowRight,
   QrCode,
   MapPin,
-  Layers,
-  Hash
+  Loader2
 } from 'lucide-react';
 import { Toast } from '../components/Toast';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // Estados do fluxo de scanner
 type ScannerStep = 'idle' | 'camera' | 'review-photo' | 'processing' | 'result';
@@ -52,6 +45,7 @@ export const Scanner: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState<ScannerStep>('idle');
   const [showToast, setShowToast] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedData | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   
@@ -271,34 +265,42 @@ export const Scanner: React.FC = () => {
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (scannedData) {
-      const newProduct = {
-        id: scannedData.internalId,
-        name: scannedData.name,
-        lot: scannedData.manufacturerLot,
-        expiryDate: scannedData.expiryDate,
-        daysRemaining: scannedData.daysRemaining,
-        status: scannedData.status,
-        manufactureDate: scannedData.manufactureDate,
-        quantity: parseInt(scannedData.quantity) || 0,
-        unitPrice: parseFloat(scannedData.price) || 0,
-        location: {
-          aisle: scannedData.aisle.toUpperCase(),
-          shelf: scannedData.shelf.toUpperCase()
-        },
-        images: scannedData.images,
-        codeType: scannedData.codeType
-      };
-      
-      const savedProducts = JSON.parse(localStorage.getItem('lote-certo-products') || '[]');
-      localStorage.setItem('lote-certo-products', JSON.stringify([...savedProducts, newProduct]));
-    }
+      setIsSaving(true);
+      try {
+        const newProduct = {
+          name: scannedData.name,
+          lot: scannedData.manufacturerLot,
+          expiryDate: scannedData.expiryDate,
+          daysRemaining: scannedData.daysRemaining,
+          status: scannedData.status,
+          manufactureDate: scannedData.manufactureDate,
+          quantity: parseInt(scannedData.quantity) || 0,
+          unitPrice: parseFloat(scannedData.price) || 0,
+          location: {
+            aisle: scannedData.aisle.toUpperCase(),
+            shelf: scannedData.shelf.toUpperCase()
+          },
+          images: scannedData.images,
+          codeType: scannedData.codeType,
+          // Valores padrão para a inteligência (podem ser editados depois)
+          averageDailySales: 0,
+          minStockLevel: 10
+        };
+        
+        await addDoc(collection(db, "products"), newProduct);
+        setShowToast(true);
+        setTimeout(() => {
+          navigate('/dashboard'); // Changed from '/' to '/dashboard'
+        }, 1500);
 
-    setShowToast(true);
-    setTimeout(() => {
-      navigate('/');
-    }, 1500);
+      } catch (error) {
+        console.error("Erro ao salvar:", error);
+        alert("Erro ao salvar produto. Tente novamente.");
+        setIsSaving(false);
+      }
+    }
   };
 
   const handleRescan = () => {
@@ -320,7 +322,7 @@ export const Scanner: React.FC = () => {
       {/* Header */}
       <div className="px-4 py-4 flex items-center bg-slate-900/90 backdrop-blur-sm fixed w-full top-0 z-20 text-white border-b border-slate-700">
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')} 
           className="mr-3 p-1 hover:bg-slate-700 rounded-full transition-colors"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -611,17 +613,19 @@ export const Scanner: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={handleRescan}
-                className="flex items-center justify-center space-x-2 bg-slate-800 text-white py-3 rounded-xl font-medium hover:bg-slate-700 transition-colors"
+                disabled={isSaving}
+                className="flex items-center justify-center space-x-2 bg-slate-800 text-white py-3 rounded-xl font-medium hover:bg-slate-700 transition-colors disabled:opacity-50"
               >
                 <RefreshCcw className="w-4 h-4" />
                 <span>Reiniciar</span>
               </button>
               <button 
                 onClick={handleConfirm}
-                className="flex items-center justify-center space-x-2 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-500 shadow-lg shadow-green-900/20 transition-all active:scale-95"
+                disabled={isSaving}
+                className="flex items-center justify-center space-x-2 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-500 shadow-lg shadow-green-900/20 transition-all active:scale-95 disabled:opacity-50"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Salvar & Controlar</span>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                <span>{isSaving ? 'Salvando...' : 'Salvar & Controlar'}</span>
               </button>
             </div>
           </div>
@@ -629,7 +633,7 @@ export const Scanner: React.FC = () => {
       </div>
 
       <Toast 
-        message="Lote endereçado e salvo com sucesso!" 
+        message="Lote salvo no Firebase com sucesso!" 
         isVisible={showToast} 
         onClose={() => setShowToast(false)} 
       />

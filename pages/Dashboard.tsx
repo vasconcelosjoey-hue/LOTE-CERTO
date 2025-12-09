@@ -19,19 +19,20 @@ import {
   ArrowRight,
   ShoppingCart,
   Zap,
-  BarChart3
+  BarChart3,
+  Loader2
 } from 'lucide-react';
 import { MOCK_PRODUCTS, STATUS_DEFINITIONS } from '../constants';
 import { FilterType, ProductStatus, Product, SmartAlert } from '../types';
 import { Toast } from '../components/Toast';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('lote-certo-products');
-    return saved ? JSON.parse(saved) : MOCK_PRODUCTS;
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,6 +48,32 @@ export const Dashboard: React.FC = () => {
   const [urgentBuyList, setUrgentBuyList] = useState<Product[]>([]);
   const [smartBuyList, setSmartBuyList] = useState<Product[]>([]);
   const [topMovers, setTopMovers] = useState<Product[]>([]);
+
+  // Carregar dados do Firebase
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        const querySnapshot = await getDocs(collection(db, "products"));
+        const firebaseProducts = querySnapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id // Usa o ID do documento do Firestore
+        })) as Product[];
+        
+        // Se estiver vazio (primeiro acesso), podemos opcionalmente usar os mocks ou deixar vazio
+        // Por enquanto, vamos deixar vazio para respeitar o banco
+        setProducts(firebaseProducts);
+      } catch (error) {
+        console.error("Erro ao buscar produtos:", error);
+        setToastMessage("Erro ao conectar com o banco de dados.");
+        setShowToast(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // Engine de Inteligência: Gera alertas e calcula KPIs
   useEffect(() => {
@@ -140,14 +167,20 @@ export const Dashboard: React.FC = () => {
 
   const handleDeleteClick = (id: string) => setProductToDelete(id);
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (productToDelete) {
-      const updatedProducts = products.filter(p => p.id !== productToDelete);
-      setProducts(updatedProducts);
-      localStorage.setItem('lote-certo-products', JSON.stringify(updatedProducts));
-      setProductToDelete(null);
-      setToastMessage("Produto excluído do controle!");
-      setShowToast(true);
+      try {
+        await deleteDoc(doc(db, "products", productToDelete));
+        const updatedProducts = products.filter(p => p.id !== productToDelete);
+        setProducts(updatedProducts);
+        setProductToDelete(null);
+        setToastMessage("Produto excluído do banco de dados!");
+        setShowToast(true);
+      } catch (error) {
+        console.error("Erro ao deletar:", error);
+        setToastMessage("Erro ao excluir produto.");
+        setShowToast(true);
+      }
     }
   };
 
@@ -186,267 +219,285 @@ export const Dashboard: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
         
-        {/* SEÇÃO 1: MONITORAMENTO DE PERDAS (D-90) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center">
-              <AlertTriangle className="w-5 h-5 mr-2 text-slate-500" />
-              Gestão de Validades
-            </h2>
-            <span className="text-xs font-medium bg-red-50 text-red-600 px-2 py-1 rounded-full border border-red-100">
-              Risco: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValueAtRisk)}
-            </span>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
+            <p className="text-slate-500 text-sm">Carregando dados do servidor...</p>
           </div>
+        )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Críticos */}
-             <div onClick={() => handleCardClick('critical')} className={`cursor-pointer p-4 rounded-xl border-2 transition-all ${filter === 'critical' ? 'border-red-500 bg-red-50' : 'border-slate-100 bg-white hover:border-red-200'}`}>
-                <div className="flex justify-between items-start">
-                  <div className="p-2 bg-red-100 rounded-lg text-red-600"><AlertOctagon className="w-5 h-5"/></div>
-                  <span className="text-2xl font-bold text-slate-800">{counts.critical}</span>
-                </div>
-                <p className="mt-2 text-sm font-semibold text-slate-600">Críticos (≤ 30 dias)</p>
-             </div>
-             {/* Atenção */}
-             <div onClick={() => handleCardClick('warning')} className={`cursor-pointer p-4 rounded-xl border-2 transition-all ${filter === 'warning' ? 'border-yellow-500 bg-yellow-50' : 'border-slate-100 bg-white hover:border-yellow-200'}`}>
-                <div className="flex justify-between items-start">
-                   <div className="p-2 bg-yellow-100 rounded-lg text-yellow-600"><AlertTriangle className="w-5 h-5"/></div>
-                  <span className="text-2xl font-bold text-slate-800">{counts.warning}</span>
-                </div>
-                <p className="mt-2 text-sm font-semibold text-slate-600">Atenção (31-90 dias)</p>
-             </div>
-             {/* Seguros */}
-             <div onClick={() => handleCardClick('safe')} className={`cursor-pointer p-4 rounded-xl border-2 transition-all ${filter === 'safe' ? 'border-green-500 bg-green-50' : 'border-slate-100 bg-white hover:border-green-200'}`}>
-                <div className="flex justify-between items-start">
-                   <div className="p-2 bg-green-100 rounded-lg text-green-600"><CheckCircle className="w-5 h-5"/></div>
-                  <span className="text-2xl font-bold text-slate-800">{counts.safe}</span>
-                </div>
-                <p className="mt-2 text-sm font-semibold text-slate-600">Seguros (&gt; 90 dias)</p>
-             </div>
-          </div>
-        </section>
-
-        {/* SEÇÃO 2: INTELIGÊNCIA DE ABASTECIMENTO (NOVO) */}
-        <section className="space-y-4 pt-4 border-t border-slate-200">
-           <h2 className="text-lg font-bold text-slate-800 flex items-center">
-              <ShoppingCart className="w-5 h-5 mr-2 text-blue-500" />
-              Inteligência de Compras
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* CARD 1: MAIS VENDIDOS (GIRO) */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col h-full">
-                <div className="flex items-center mb-4">
-                  <div className="p-2 bg-blue-100 text-blue-600 rounded-lg mr-3">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm">Mais Vendidos</h3>
-                    <p className="text-[10px] text-slate-500">Curva A de Giro</p>
-                  </div>
-                </div>
-                <div className="flex-1 space-y-3">
-                  {topMovers.length > 0 ? topMovers.map((p, i) => (
-                    <div key={p.id} className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0">
-                      <div className="flex items-center">
-                        <span className="w-5 h-5 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center text-xs font-bold mr-2">{i+1}</span>
-                        <span className="truncate w-32 font-medium text-slate-700">{p.name}</span>
-                      </div>
-                      <span className="font-bold text-blue-600">{p.averageDailySales} un/dia</span>
-                    </div>
-                  )) : <p className="text-xs text-slate-400 italic">Sem dados de venda.</p>}
-                </div>
+        {!isLoading && (
+          <>
+            {/* SEÇÃO 1: MONITORAMENTO DE PERDAS (D-90) */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-800 flex items-center">
+                  <AlertTriangle className="w-5 h-5 mr-2 text-slate-500" />
+                  Gestão de Validades
+                </h2>
+                <span className="text-xs font-medium bg-red-50 text-red-600 px-2 py-1 rounded-full border border-red-100">
+                  Risco: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValueAtRisk)}
+                </span>
               </div>
 
-              {/* CARD 2: COMPRA URGENTE (RUPTURA) */}
-              <div className="bg-white rounded-xl shadow-sm border border-red-100 p-5 flex flex-col h-full relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-red-50 rounded-bl-full -mr-2 -mt-2"></div>
-                <div className="flex items-center mb-4 relative z-10">
-                  <div className="p-2 bg-red-100 text-red-600 rounded-lg mr-3">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm">Risco de Ruptura</h3>
-                    <p className="text-[10px] text-red-500 font-semibold">Repor com Urgência</p>
-                  </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Críticos */}
+                <div onClick={() => handleCardClick('critical')} className={`cursor-pointer p-4 rounded-xl border-2 transition-all ${filter === 'critical' ? 'border-red-500 bg-red-50' : 'border-slate-100 bg-white hover:border-red-200'}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="p-2 bg-red-100 rounded-lg text-red-600"><AlertOctagon className="w-5 h-5"/></div>
+                      <span className="text-2xl font-bold text-slate-800">{counts.critical}</span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-slate-600">Críticos (≤ 30 dias)</p>
                 </div>
-                <div className="flex-1 space-y-3 relative z-10">
-                  {urgentBuyList.length > 0 ? urgentBuyList.map(p => (
-                    <div key={p.id} className="bg-red-50 p-2 rounded-lg border border-red-100">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-bold text-xs text-slate-800 line-clamp-1">{p.name}</span>
-                        <span className="bg-white text-red-600 px-1.5 py-0.5 rounded text-[10px] font-bold border border-red-100">
-                          {p.quantity} un
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                         <span>Mínimo: {p.minStockLevel}</span>
-                         <span>Cobertura: <b className="text-red-600">{((p.quantity || 0) / (p.averageDailySales || 1)).toFixed(1)} dias</b></span>
-                      </div>
+                {/* Atenção */}
+                <div onClick={() => handleCardClick('warning')} className={`cursor-pointer p-4 rounded-xl border-2 transition-all ${filter === 'warning' ? 'border-yellow-500 bg-yellow-50' : 'border-slate-100 bg-white hover:border-yellow-200'}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="p-2 bg-yellow-100 rounded-lg text-yellow-600"><AlertTriangle className="w-5 h-5"/></div>
+                      <span className="text-2xl font-bold text-slate-800">{counts.warning}</span>
                     </div>
-                  )) : (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                      <CheckCircle className="w-8 h-8 mb-2 opacity-20" />
-                      <p className="text-xs">Estoque seguro</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-600">Atenção (31-90 dias)</p>
+                </div>
+                {/* Seguros */}
+                <div onClick={() => handleCardClick('safe')} className={`cursor-pointer p-4 rounded-xl border-2 transition-all ${filter === 'safe' ? 'border-green-500 bg-green-50' : 'border-slate-100 bg-white hover:border-green-200'}`}>
+                    <div className="flex justify-between items-start">
+                      <div className="p-2 bg-green-100 rounded-lg text-green-600"><CheckCircle className="w-5 h-5"/></div>
+                      <span className="text-2xl font-bold text-slate-800">{counts.safe}</span>
                     </div>
-                  )}
+                    <p className="mt-2 text-sm font-semibold text-slate-600">Seguros (&gt; 90 dias)</p>
                 </div>
               </div>
+            </section>
 
-              {/* CARD 3: COMPRA INTELIGENTE (OPORTUNIDADE) */}
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg p-5 flex flex-col h-full text-white">
-                <div className="flex items-center mb-4">
-                  <div className="p-2 bg-white/10 text-yellow-400 rounded-lg mr-3 border border-white/10">
-                    <Zap className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-sm">Compra Inteligente</h3>
-                    <p className="text-[10px] text-slate-400">Otimizar Abastecimento</p>
-                  </div>
-                </div>
-                <div className="flex-1 space-y-3">
-                   {smartBuyList.length > 0 ? smartBuyList.map(p => (
-                    <div key={p.id} className="flex justify-between items-center text-sm bg-white/5 p-2 rounded-lg border border-white/5">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-slate-200 line-clamp-1 w-32">{p.name}</span>
-                        <span className="text-[10px] text-slate-400">Giro: {p.averageDailySales} un/dia</span>
+            {/* SEÇÃO 2: INTELIGÊNCIA DE ABASTECIMENTO (NOVO) */}
+            <section className="space-y-4 pt-4 border-t border-slate-200">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center">
+                  <ShoppingCart className="w-5 h-5 mr-2 text-blue-500" />
+                  Inteligência de Compras
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  
+                  {/* CARD 1: MAIS VENDIDOS (GIRO) */}
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col h-full">
+                    <div className="flex items-center mb-4">
+                      <div className="p-2 bg-blue-100 text-blue-600 rounded-lg mr-3">
+                        <TrendingUp className="w-5 h-5" />
                       </div>
-                      <button className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold transition-colors">
-                        Repor
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm">Mais Vendidos</h3>
+                        <p className="text-[10px] text-slate-500">Curva A de Giro</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      {topMovers.length > 0 ? topMovers.map((p, i) => (
+                        <div key={p.id} className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0">
+                          <div className="flex items-center">
+                            <span className="w-5 h-5 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center text-xs font-bold mr-2">{i+1}</span>
+                            <span className="truncate w-32 font-medium text-slate-700">{p.name}</span>
+                          </div>
+                          <span className="font-bold text-blue-600">{p.averageDailySales} un/dia</span>
+                        </div>
+                      )) : <p className="text-xs text-slate-400 italic">Sem dados de venda.</p>}
+                    </div>
+                  </div>
+
+                  {/* CARD 2: COMPRA URGENTE (RUPTURA) */}
+                  <div className="bg-white rounded-xl shadow-sm border border-red-100 p-5 flex flex-col h-full relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-red-50 rounded-bl-full -mr-2 -mt-2"></div>
+                    <div className="flex items-center mb-4 relative z-10">
+                      <div className="p-2 bg-red-100 text-red-600 rounded-lg mr-3">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm">Risco de Ruptura</h3>
+                        <p className="text-[10px] text-red-500 font-semibold">Repor com Urgência</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-3 relative z-10">
+                      {urgentBuyList.length > 0 ? urgentBuyList.map(p => (
+                        <div key={p.id} className="bg-red-50 p-2 rounded-lg border border-red-100">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-bold text-xs text-slate-800 line-clamp-1">{p.name}</span>
+                            <span className="bg-white text-red-600 px-1.5 py-0.5 rounded text-[10px] font-bold border border-red-100">
+                              {p.quantity} un
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Mínimo: {p.minStockLevel}</span>
+                            <span>Cobertura: <b className="text-red-600">{((p.quantity || 0) / (p.averageDailySales || 1)).toFixed(1)} dias</b></span>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                          <CheckCircle className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-xs">Estoque seguro</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CARD 3: COMPRA INTELIGENTE (OPORTUNIDADE) */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg p-5 flex flex-col h-full text-white">
+                    <div className="flex items-center mb-4">
+                      <div className="p-2 bg-white/10 text-yellow-400 rounded-lg mr-3 border border-white/10">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-sm">Compra Inteligente</h3>
+                        <p className="text-[10px] text-slate-400">Otimizar Abastecimento</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      {smartBuyList.length > 0 ? smartBuyList.map(p => (
+                        <div key={p.id} className="flex justify-between items-center text-sm bg-white/5 p-2 rounded-lg border border-white/5">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-slate-200 line-clamp-1 w-32">{p.name}</span>
+                            <span className="text-[10px] text-slate-400">Giro: {p.averageDailySales} un/dia</span>
+                          </div>
+                          <button className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold transition-colors">
+                            Repor
+                          </button>
+                        </div>
+                      )) : (
+                        <p className="text-xs text-slate-500 italic text-center mt-4">Nenhuma sugestão no momento.</p>
+                      )}
+                    </div>
+                    <div className="mt-auto pt-3 border-t border-white/10">
+                      <p className="text-[10px] text-slate-400 text-center">
+                        Sugestões baseadas em giro e cobertura ideal (15-20 dias).
+                      </p>
+                    </div>
+                  </div>
+
+                </div>
+            </section>
+
+            {/* LISTA COMPLETA (Busca) */}
+            <section className="space-y-4 pt-4 border-t border-slate-200">
+              {/* Filtros e Busca */}
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+                  <div className="relative w-full md:w-96">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                      placeholder="Buscar produto, lote ou local..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 w-full md:w-auto">
+                    {filter !== 'all' && (
+                      <button onClick={() => setFilter('all')} className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300 transition-colors">
+                        Limpar Filtros
                       </button>
+                    )}
+                    <button onClick={() => {setShowToast(true); setToastMessage("Relatório de Perdas (PDF) Gerado!");}} className="flex-1 md:flex-none px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors shadow-sm flex items-center justify-center gap-2">
+                      <FileText className="w-4 h-4" /> Relatório D-90
+                    </button>
+                  </div>
+                </div>
+
+                {/* Alertas Inteligentes (Painel de Gestão) */}
+                {smartAlerts.length > 0 && (
+                  <div className="bg-orange-50 rounded-xl p-4 border border-orange-100 animate-fade-in">
+                    <div className="flex items-center mb-3">
+                      <BellRing className="w-4 h-4 text-orange-500 mr-2" />
+                      <h3 className="text-orange-800 font-bold text-xs uppercase tracking-wide">Avisos do Sistema</h3>
                     </div>
-                   )) : (
-                     <p className="text-xs text-slate-500 italic text-center mt-4">Nenhuma sugestão no momento.</p>
-                   )}
-                </div>
-                <div className="mt-auto pt-3 border-t border-white/10">
-                   <p className="text-[10px] text-slate-400 text-center">
-                     Sugestões baseadas em giro e cobertura ideal (15-20 dias).
-                   </p>
-                </div>
-              </div>
-
-            </div>
-        </section>
-
-        {/* LISTA COMPLETA (Busca) */}
-        <section className="space-y-4 pt-4 border-t border-slate-200">
-           {/* Filtros e Busca */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-              <div className="relative w-full md:w-96">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-                  placeholder="Buscar produto, lote ou local..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              
-              <div className="flex gap-2 w-full md:w-auto">
-                {filter !== 'all' && (
-                  <button onClick={() => setFilter('all')} className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300 transition-colors">
-                    Limpar Filtros
-                  </button>
+                    <div className="grid gap-2">
+                      {smartAlerts.map(alert => (
+                        <div key={alert.id} className="bg-white border border-orange-200 p-3 rounded-lg flex items-start space-x-3 shadow-sm">
+                          <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${alert.type === 'critical' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
+                          <div className="flex-1">
+                            <h4 className="text-slate-800 font-semibold text-xs">{alert.title}</h4>
+                            <p className="text-slate-500 text-[10px] mt-0.5">{alert.message}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                <button onClick={() => {setShowToast(true); setToastMessage("Relatório de Perdas (PDF) Gerado!");}} className="flex-1 md:flex-none px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors shadow-sm flex items-center justify-center gap-2">
-                  <FileText className="w-4 h-4" /> Relatório D-90
-                </button>
-              </div>
-            </div>
 
-            {/* Alertas Inteligentes (Painel de Gestão) */}
-            {smartAlerts.length > 0 && (
-              <div className="bg-orange-50 rounded-xl p-4 border border-orange-100 animate-fade-in">
-                <div className="flex items-center mb-3">
-                  <BellRing className="w-4 h-4 text-orange-500 mr-2" />
-                  <h3 className="text-orange-800 font-bold text-xs uppercase tracking-wide">Avisos do Sistema</h3>
-                </div>
-                <div className="grid gap-2">
-                  {smartAlerts.map(alert => (
-                    <div key={alert.id} className="bg-white border border-orange-200 p-3 rounded-lg flex items-start space-x-3 shadow-sm">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${alert.type === 'critical' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
-                      <div className="flex-1">
-                        <h4 className="text-slate-800 font-semibold text-xs">{alert.title}</h4>
-                        <p className="text-slate-500 text-[10px] mt-0.5">{alert.message}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tabela Principal */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
-                    <tr>
-                      <th className="px-6 py-3 font-semibold">Produto</th>
-                      <th className="px-6 py-3 font-semibold text-center">Giro (Dia)</th>
-                      <th className="px-6 py-3 font-semibold text-center">Estoque</th>
-                      <th className="px-6 py-3 font-semibold">Lote/Validade</th>
-                      <th className="px-6 py-3 font-semibold">Status</th>
-                      <th className="px-6 py-3 font-semibold text-right">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredProducts.map((product) => {
-                      const statusConfig = STATUS_DEFINITIONS[product.status];
-                      return (
-                        <tr key={product.id} className="hover:bg-slate-50 transition-colors group">
-                          <td className="px-6 py-4">
-                            <div className="font-medium text-slate-900">{product.name}</div>
-                            <div className="flex items-center gap-2 mt-1">
-                               <div className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200 flex items-center">
-                                 <MapPin className="w-3 h-3 mr-1" /> {product.location?.aisle || 'N/A'}
-                               </div>
-                               <div className="text-[10px] text-slate-400">R$ {product.unitPrice?.toFixed(2)}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                             {product.averageDailySales ? (
-                               <div className="flex flex-col items-center">
-                                 <span className="font-bold text-blue-600 text-xs">{product.averageDailySales} un</span>
-                                 <span className="text-[10px] text-slate-400">média/dia</span>
-                               </div>
-                             ) : <span className="text-slate-300">-</span>}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`font-bold ${product.quantity <= (product.minStockLevel || 0) ? 'text-red-600' : 'text-slate-700'}`}>
-                              {product.quantity || 0}
-                            </span>
-                            <span className="text-xs text-slate-400 ml-1">un</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-xs font-mono text-slate-500">L: {product.lot}</div>
-                            <div className={`text-xs font-bold ${product.daysRemaining <= 30 ? 'text-red-600' : 'text-slate-700'}`}>
-                              {product.expiryDate}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${statusConfig.badge}`}>
-                              {statusConfig.label.split(' ')[0]}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <button 
-                              onClick={() => handleDeleteClick(product.id)}
-                              className="text-slate-300 hover:text-red-500 p-2 rounded-full transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
+                {/* Tabela Principal */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                        <tr>
+                          <th className="px-6 py-3 font-semibold">Produto</th>
+                          <th className="px-6 py-3 font-semibold text-center">Giro (Dia)</th>
+                          <th className="px-6 py-3 font-semibold text-center">Estoque</th>
+                          <th className="px-6 py-3 font-semibold">Lote/Validade</th>
+                          <th className="px-6 py-3 font-semibold">Status</th>
+                          <th className="px-6 py-3 font-semibold text-right">Ação</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-        </section>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredProducts.length > 0 ? filteredProducts.map((product) => {
+                          const statusConfig = STATUS_DEFINITIONS[product.status] || STATUS_DEFINITIONS['safe'];
+                          return (
+                            <tr key={product.id} className="hover:bg-slate-50 transition-colors group">
+                              <td className="px-6 py-4">
+                                <div className="font-medium text-slate-900">{product.name}</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200 flex items-center">
+                                    <MapPin className="w-3 h-3 mr-1" /> {product.location?.aisle || 'N/A'}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400">R$ {product.unitPrice?.toFixed(2)}</div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                {product.averageDailySales ? (
+                                  <div className="flex flex-col items-center">
+                                    <span className="font-bold text-blue-600 text-xs">{product.averageDailySales} un</span>
+                                    <span className="text-[10px] text-slate-400">média/dia</span>
+                                  </div>
+                                ) : <span className="text-slate-300">-</span>}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span className={`font-bold ${product.quantity <= (product.minStockLevel || 0) ? 'text-red-600' : 'text-slate-700'}`}>
+                                  {product.quantity || 0}
+                                </span>
+                                <span className="text-xs text-slate-400 ml-1">un</span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-xs font-mono text-slate-500">L: {product.lot}</div>
+                                <div className={`text-xs font-bold ${product.daysRemaining <= 30 ? 'text-red-600' : 'text-slate-700'}`}>
+                                  {product.expiryDate}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${statusConfig.badge}`}>
+                                  {statusConfig.label.split(' ')[0]}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button 
+                                  onClick={() => handleDeleteClick(product.id)}
+                                  className="text-slate-300 hover:text-red-500 p-2 rounded-full transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        }) : (
+                          <tr>
+                            <td colSpan={6} className="text-center py-8 text-slate-400">
+                              Nenhum produto encontrado. Clique em "Auditar" para começar.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+            </section>
+          </>
+        )}
       </main>
 
       {/* Modal Delete */}
