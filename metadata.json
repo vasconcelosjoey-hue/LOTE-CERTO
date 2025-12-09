@@ -1,0 +1,7 @@
+{
+  "name": "LOTE CERTO",
+  "description": "Controle Inteligente de Validades para medicamentos e produtos farmacêuticos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
