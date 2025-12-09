@@ -2,21 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleGenAI } from "@google/genai";
 import { 
-  ChevronLeft, 
+  CaretLeft, 
   Camera, 
-  CheckCircle2, 
-  RefreshCcw, 
-  ScanLine,
+  CheckCircle, 
+  ArrowsClockwise, 
+  Scan,
   X,
-  PackageCheck,
-  DollarSign,
+  Package,
+  CurrencyDollar,
   Plus,
   ArrowRight,
-  Maximize,
   MapPin,
-  Loader2,
-  AlertTriangle
-} from 'lucide-react';
+  Spinner
+} from '@phosphor-icons/react';
 import { Toast } from '../components/Toast';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -274,10 +272,10 @@ export const Scanner: React.FC = () => {
       {/* HEADER SCANNER */}
       <div className="px-4 py-4 flex items-center bg-medical-dark/95 backdrop-blur-sm fixed w-full top-0 z-30 text-white border-b border-white/10">
         <button onClick={() => navigate('/dashboard')} className="mr-3 p-1 hover:bg-white/10 rounded-full transition-colors">
-          <ChevronLeft className="w-6 h-6" />
+          <CaretLeft weight="bold" className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
-          <ScanLine className="w-5 h-5 text-medical-primary" />
+          <Scan weight="duotone" className="w-5 h-5 text-medical-primary" />
           <h1 className="text-sm font-bold tracking-tight">Scanner Clínico</h1>
         </div>
       </div>
@@ -288,7 +286,7 @@ export const Scanner: React.FC = () => {
         {step === 'idle' && (
           <div className="w-full max-w-sm flex flex-col items-center animate-fade-in space-y-6">
             <div className="w-full aspect-[4/3] border border-white/20 rounded-2xl flex flex-col items-center justify-center bg-white/5 relative overflow-hidden group hover:border-medical-primary/50 transition-colors">
-              <ScanLine className="w-16 h-16 text-white/30 mb-4" />
+              <Scan weight="thin" className="w-16 h-16 text-white/30 mb-4" />
               <p className="text-white/50 text-sm font-medium">Aguardando Produto</p>
             </div>
 
@@ -296,13 +294,13 @@ export const Scanner: React.FC = () => {
               onClick={startCamera}
               className="w-full bg-medical-primary hover:bg-teal-600 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-3 shadow-lg shadow-teal-500/20 transition-all active:scale-95"
             >
-              <Camera className="w-6 h-6" />
+              <Camera weight="fill" className="w-6 h-6" />
               <span>INICIAR LEITURA DE LOTE</span>
             </button>
             
             <div className="flex gap-4 text-xs text-white/40 justify-center">
-               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> EAN-13</span>
-               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Datamatrix</span>
+               <span className="flex items-center gap-1"><CheckCircle weight="fill" className="w-3 h-3" /> EAN-13</span>
+               <span className="flex items-center gap-1"><CheckCircle weight="fill" className="w-3 h-3" /> Datamatrix</span>
             </div>
           </div>
         )}
@@ -330,7 +328,7 @@ export const Scanner: React.FC = () => {
 
              <div className="absolute top-4 right-4 z-40">
                 <button onClick={handleCancelScan} className="p-2 bg-black/40 text-white rounded-full backdrop-blur-md">
-                   <X className="w-6 h-6" />
+                   <X weight="bold" className="w-6 h-6" />
                 </button>
              </div>
 
@@ -353,7 +351,7 @@ export const Scanner: React.FC = () => {
                 <div className="w-full aspect-video bg-slate-100 rounded-xl overflow-hidden mb-6 border border-slate-200 relative">
                    {capturedImages.length > 0 && <img src={`data:image/jpeg;base64,${capturedImages[capturedImages.length - 1]}`} className="w-full h-full object-cover" />}
                    <div className="absolute bottom-2 right-2 bg-green-500 text-white p-1 rounded-full shadow-lg">
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle weight="fill" className="w-4 h-4" />
                    </div>
                 </div>
                 
@@ -362,12 +360,12 @@ export const Scanner: React.FC = () => {
 
                 <div className="space-y-3">
                    {capturedImages.length < 3 && (
-                      <button onClick={handleAddMorePhotos} className="w-full py-3 rounded-lg border border-medical-primary text-medical-primary font-semibold text-sm hover:bg-teal-50 transition-colors">
-                         + Adicionar outro ângulo
+                      <button onClick={handleAddMorePhotos} className="w-full py-3 rounded-lg border border-medical-primary text-medical-primary font-semibold text-sm hover:bg-teal-50 transition-colors flex items-center justify-center gap-2">
+                         <Plus weight="bold" className="w-4 h-4" /> Adicionar outro ângulo
                       </button>
                    )}
                    <button onClick={handleProcessImages} className="w-full py-3 rounded-lg bg-medical-primary text-white font-bold text-sm shadow-lg hover:bg-teal-600 transition-colors flex items-center justify-center gap-2">
-                      Processar Imagens <ArrowRight className="w-4 h-4" />
+                      Processar Imagens <ArrowRight weight="bold" className="w-4 h-4" />
                    </button>
                 </div>
              </div>
@@ -380,7 +378,7 @@ export const Scanner: React.FC = () => {
              <div className="relative w-24 h-24">
                 <div className="absolute inset-0 border-4 border-white/10 rounded-full"></div>
                 <div className="absolute inset-0 border-4 border-medical-primary border-t-transparent rounded-full animate-spin"></div>
-                <ScanLine className="absolute inset-0 m-auto w-8 h-8 text-white animate-pulse" />
+                <Scan weight="duotone" className="absolute inset-0 m-auto w-8 h-8 text-white animate-pulse" />
              </div>
              <p className="mt-8 text-white font-medium tracking-wide animate-pulse">ANALISANDO DADOS CLÍNICOS...</p>
           </div>
@@ -446,7 +444,7 @@ export const Scanner: React.FC = () => {
 
                    <div className="border-t border-slate-100 pt-4 mt-2">
                       <p className="text-xs font-bold text-medical-primary flex items-center mb-3">
-                         <MapPin className="w-3 h-3 mr-1" /> Logística Interna
+                         <MapPin weight="fill" className="w-3 h-3 mr-1" /> Logística Interna
                       </p>
                       <div className="grid grid-cols-3 gap-3">
                          <div>
@@ -467,7 +465,7 @@ export const Scanner: React.FC = () => {
                    <div>
                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Preço Unitário (R$)</label>
                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                          <CurrencyDollar weight="bold" className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                           <input type="text" value={scannedData.price} onChange={(e) => handleDataChange('price', e.target.value)} className="w-full pl-9 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-mono text-medical-dark" placeholder="0.00" />
                        </div>
                    </div>
@@ -475,11 +473,12 @@ export const Scanner: React.FC = () => {
              </div>
              
              <div className="bg-slate-50 p-4 rounded-b-2xl border-x border-b border-slate-200 grid grid-cols-2 gap-4">
-                <button onClick={handleRescan} disabled={isSaving} className="py-3 rounded-lg border border-slate-300 text-slate-600 font-semibold text-sm hover:bg-slate-100 transition-colors">
+                <button onClick={handleRescan} disabled={isSaving} className="py-3 rounded-lg border border-slate-300 text-slate-600 font-semibold text-sm hover:bg-slate-100 transition-colors flex items-center justify-center gap-2">
+                   <ArrowsClockwise weight="bold" className="w-4 h-4" />
                    Reiniciar
                 </button>
                 <button onClick={handleConfirm} disabled={isSaving} className="py-3 rounded-lg bg-medical-primary text-white font-bold text-sm shadow-md hover:bg-teal-600 transition-colors flex items-center justify-center gap-2">
-                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                   {isSaving ? <Spinner weight="bold" className="w-4 h-4 animate-spin" /> : <CheckCircle weight="fill" className="w-4 h-4" />}
                    {isSaving ? 'Registrando...' : 'Confirmar Lote'}
                 </button>
              </div>

@@ -2,16 +2,12 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, 
-  FlaskConical, 
-  Activity, 
-  ChevronRight, 
-  Stethoscope,
-  ScanLine,
-  Pill,
-  CheckCircle2,
-  Lock,
+  Flask, 
+  Pulse, 
+  CaretRight, 
+  Scan,
   ArrowRight
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,7 +24,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-medical-primary/10 p-2 rounded-lg">
-              <ShieldCheck className="w-6 h-6 text-medical-primary" />
+              <ShieldCheck weight="duotone" className="w-6 h-6 text-medical-primary" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-medical-dark leading-none">
@@ -48,9 +44,9 @@ export const LandingPage: React.FC = () => {
 
           <button 
             onClick={handleAccess}
-            className="bg-medical-dark text-white px-6 py-2.5 rounded-lg font-medium text-sm hover:bg-slate-700 transition-all shadow-lg shadow-medical-dark/10 active:scale-95 flex items-center gap-2"
+            className="bg-medical-dark text-white px-6 py-2.5 rounded-lg font-medium text-sm hover:bg-slate-700 transition-all shadow-lg shadow-medical-dark/10 active:scale-95 flex items-center gap-2 group"
           >
-            Acessar Sistema <ArrowRight className="w-4 h-4" />
+            Acessar Sistema <ArrowRight weight="bold" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       </nav>
@@ -58,8 +54,8 @@ export const LandingPage: React.FC = () => {
       {/* HERO SECTION CLEAN */}
       <section className="relative pt-20 pb-32 overflow-hidden bg-gradient-to-b from-slate-50 to-white">
         <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 text-medical-primary text-xs font-bold uppercase tracking-wide mb-8 border border-teal-100">
-            <Activity className="w-3.5 h-3.5" /> Tecnologia Farmacêutica 2.0
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 text-medical-primary text-xs font-bold uppercase tracking-wide mb-8 border border-teal-100 shadow-sm">
+            <Pulse weight="bold" className="w-3.5 h-3.5" /> Tecnologia Farmacêutica 2.0
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold text-medical-dark tracking-tight mb-6 leading-tight max-w-4xl mx-auto">
@@ -78,7 +74,7 @@ export const LandingPage: React.FC = () => {
               className="px-8 py-4 bg-medical-primary text-white rounded-xl font-semibold text-lg hover:bg-teal-500 transition-all shadow-xl shadow-teal-500/20 flex items-center justify-center gap-2 group"
             >
               Iniciar Controle Agora
-              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <CaretRight weight="bold" className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
 
@@ -87,18 +83,24 @@ export const LandingPage: React.FC = () => {
              <div className="absolute inset-0 bg-gradient-to-r from-teal-200 to-blue-200 rounded-3xl blur-3xl opacity-20 -z-10"></div>
              <div className="bg-white rounded-2xl border border-slate-100 shadow-soft p-1 grid grid-cols-3 gap-1">
                 {/* Visual Representation of Features */}
-                <div className="bg-slate-50 p-8 rounded-xl flex flex-col items-center border border-slate-100">
-                   <ScanLine className="w-10 h-10 text-medical-primary mb-4" />
+                <div className="bg-slate-50 p-8 rounded-xl flex flex-col items-center border border-slate-100 hover:bg-white transition-colors cursor-default group">
+                   <div className="p-3 bg-teal-50 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                     <Scan weight="duotone" className="w-10 h-10 text-medical-primary" />
+                   </div>
                    <h3 className="font-semibold text-medical-dark">Leitura Óptica (OCR)</h3>
                    <p className="text-sm text-slate-400 mt-2">Identificação de lote e validade</p>
                 </div>
-                <div className="bg-slate-50 p-8 rounded-xl flex flex-col items-center border border-slate-100">
-                   <ShieldCheck className="w-10 h-10 text-blue-900 mb-4" />
+                <div className="bg-slate-50 p-8 rounded-xl flex flex-col items-center border border-slate-100 hover:bg-white transition-colors cursor-default group">
+                   <div className="p-3 bg-blue-50 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                    <ShieldCheck weight="duotone" className="w-10 h-10 text-blue-900" />
+                   </div>
                    <h3 className="font-semibold text-medical-dark">Compliance</h3>
                    <p className="text-sm text-slate-400 mt-2">Segurança normativa D-90</p>
                 </div>
-                <div className="bg-slate-50 p-8 rounded-xl flex flex-col items-center border border-slate-100">
-                   <FlaskConical className="w-10 h-10 text-teal-600 mb-4" />
+                <div className="bg-slate-50 p-8 rounded-xl flex flex-col items-center border border-slate-100 hover:bg-white transition-colors cursor-default group">
+                   <div className="p-3 bg-teal-50 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                    <Flask weight="duotone" className="w-10 h-10 text-teal-600" />
+                   </div>
                    <h3 className="font-semibold text-medical-dark">Gestão de Estoque</h3>
                    <p className="text-sm text-slate-400 mt-2">Predição de compras</p>
                 </div>
@@ -111,7 +113,7 @@ export const LandingPage: React.FC = () => {
       <footer className="bg-white border-t border-slate-100 py-12">
          <div className="max-w-7xl mx-auto px-6 text-center">
             <div className="flex justify-center items-center gap-2 mb-4">
-               <ShieldCheck className="w-5 h-5 text-medical-primary" />
+               <ShieldCheck weight="fill" className="w-5 h-5 text-medical-primary" />
                <span className="font-bold text-medical-dark">LOTE CERTO</span>
             </div>
             <p className="text-slate-400 text-sm">

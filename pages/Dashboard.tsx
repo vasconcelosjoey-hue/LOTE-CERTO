@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  AlertTriangle, 
-  CheckCircle2, 
-  AlertOctagon, 
-  ScanLine, 
+  Warning, 
+  CheckCircle, 
+  WarningOctagon, 
+  Scan, 
   FileText, 
-  Trash2, 
-  Search,
-  TrendingUp,
+  Trash, 
+  MagnifyingGlass,
+  TrendUp,
   MapPin,
   Bell,
-  Activity,
-  PackagePlus,
+  Pulse,
+  FirstAidKit,
   ArrowRight,
   ShieldCheck,
-  ChevronDown,
-  Loader2
-} from 'lucide-react';
+  Spinner
+} from '@phosphor-icons/react';
 import { STATUS_DEFINITIONS } from '../constants';
 import { FilterType, ProductStatus, Product, SmartAlert } from '../types';
 import { Toast } from '../components/Toast';
@@ -157,7 +156,7 @@ export const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 h-18 flex justify-between items-center py-4">
           <div className="flex items-center gap-3">
              <div className="bg-medical-primary rounded-lg p-1.5 text-white">
-                <ShieldCheck className="w-5 h-5" />
+                <ShieldCheck weight="duotone" className="w-6 h-6" />
              </div>
              <div>
                 <h1 className="text-lg font-bold text-medical-dark leading-none tracking-tight">LOTE CERTO</h1>
@@ -169,7 +168,7 @@ export const Dashboard: React.FC = () => {
             onClick={() => navigate('/scanner')}
             className="group flex items-center gap-2 bg-medical-primary text-white px-5 py-2.5 rounded-lg hover:bg-teal-600 transition-all shadow-md active:scale-95"
           >
-            <ScanLine className="w-4 h-4" />
+            <Scan weight="bold" className="w-4 h-4" />
             <span className="font-semibold text-sm">Iniciar Leitura de Lote</span>
           </button>
         </div>
@@ -179,7 +178,7 @@ export const Dashboard: React.FC = () => {
         
         {isLoading ? (
            <div className="flex flex-col items-center justify-center py-20">
-             <Loader2 className="w-10 h-10 text-medical-primary animate-spin mb-4" />
+             <Spinner weight="bold" className="w-10 h-10 text-medical-primary animate-spin mb-4" />
              <p className="text-slate-400 font-medium">Carregando dados clínicos...</p>
            </div>
         ) : (
@@ -194,15 +193,15 @@ export const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4 flex items-center text-xs text-medical-danger font-medium bg-red-50 w-fit px-2 py-1 rounded">
-                     <TrendingUp className="w-3 h-3 mr-1" /> Ação Imediata
+                     <TrendUp weight="bold" className="w-3 h-3 mr-1" /> Ação Imediata
                   </div>
                </div>
 
                {/* STATUS CARDS */}
                {[
-                 { id: 'critical', label: 'Críticos (≤ 30 dias)', count: counts.critical, color: 'text-medical-danger', bg: 'bg-red-50', border: 'border-red-100', icon: AlertOctagon },
-                 { id: 'warning', label: 'Atenção (31-90 dias)', count: counts.warning, color: 'text-medical-warning', bg: 'bg-yellow-50', border: 'border-yellow-100', icon: AlertTriangle },
-                 { id: 'safe', label: 'Seguros (> 90 dias)', count: counts.safe, color: 'text-medical-success', bg: 'bg-green-50', border: 'border-green-100', icon: CheckCircle2 },
+                 { id: 'critical', label: 'Críticos (≤ 30 dias)', count: counts.critical, color: 'text-medical-danger', bg: 'bg-red-50', border: 'border-red-100', icon: WarningOctagon },
+                 { id: 'warning', label: 'Atenção (31-90 dias)', count: counts.warning, color: 'text-medical-warning', bg: 'bg-yellow-50', border: 'border-yellow-100', icon: Warning },
+                 { id: 'safe', label: 'Seguros (> 90 dias)', count: counts.safe, color: 'text-medical-success', bg: 'bg-green-50', border: 'border-green-100', icon: CheckCircle },
                ].map((card) => (
                  <div 
                     key={card.id}
@@ -210,7 +209,7 @@ export const Dashboard: React.FC = () => {
                     className={`cursor-pointer bg-white p-6 rounded-xl border shadow-soft transition-all hover:-translate-y-1 relative overflow-hidden ${filter === card.id ? 'ring-2 ring-medical-primary' : 'border-slate-100'}`}
                  >
                     <div className={`absolute top-0 right-0 p-3 rounded-bl-xl ${card.bg}`}>
-                       <card.icon className={`w-5 h-5 ${card.color}`} />
+                       <card.icon weight="duotone" className={`w-6 h-6 ${card.color}`} />
                     </div>
                     <div className="text-3xl font-bold text-medical-dark mt-2">{card.count}</div>
                     <p className="text-sm text-slate-500 font-medium mt-1">{card.label}</p>
@@ -224,7 +223,7 @@ export const Dashboard: React.FC = () => {
                 <div className="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                         <Activity className="w-4 h-4 text-medical-primary" />
+                         <Pulse weight="duotone" className="w-5 h-5 text-medical-primary" />
                          <h3 className="font-bold text-medical-dark text-sm">Risco de Ruptura</h3>
                       </div>
                       <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">Urgente</span>
@@ -248,7 +247,7 @@ export const Dashboard: React.FC = () => {
                 <div className="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                         <PackagePlus className="w-4 h-4 text-medical-dark" />
+                         <FirstAidKit weight="duotone" className="w-5 h-5 text-medical-dark" />
                          <h3 className="font-bold text-medical-dark text-sm">Sugestão de Compra</h3>
                       </div>
                    </div>
@@ -259,7 +258,7 @@ export const Dashboard: React.FC = () => {
                               <span className="font-semibold text-medical-dark block">{p.name}</span>
                               <span className="text-xs text-slate-500">Giro: {p.averageDailySales} un/dia</span>
                            </div>
-                           <ArrowRight className="w-4 h-4 text-slate-300" />
+                           <ArrowRight weight="bold" className="w-4 h-4 text-slate-300" />
                         </div>
                       )) : (
                         <div className="text-center py-6 text-slate-400 text-sm">Estoque otimizado.</div>
@@ -270,7 +269,7 @@ export const Dashboard: React.FC = () => {
                 {/* ALERTS PANEL */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden flex flex-col">
                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-medical-warning" />
+                      <Bell weight="duotone" className="w-5 h-5 text-medical-warning" />
                       <h3 className="font-bold text-medical-dark text-sm">Alertas Clínicos</h3>
                    </div>
                    <div className="p-4 space-y-2 flex-1 overflow-y-auto max-h-[300px]">
@@ -293,7 +292,7 @@ export const Dashboard: React.FC = () => {
             <section className="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
                <div className="p-5 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
                   <div className="relative w-full md:w-96">
-                     <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                     <MagnifyingGlass weight="bold" className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                      <input 
                        type="text" 
                        placeholder="Buscar por nome, lote ou princípio ativo..." 
@@ -312,7 +311,7 @@ export const Dashboard: React.FC = () => {
                        onClick={() => { setShowToast(true); setToastMessage("PDF D-90 Gerado com sucesso."); }}
                        className="flex items-center gap-2 bg-white border border-slate-200 text-medical-dark px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors"
                      >
-                        <FileText className="w-4 h-4 text-slate-400" />
+                        <FileText weight="duotone" className="w-4 h-4 text-slate-400" />
                         Relatório D-90
                      </button>
                   </div>
@@ -343,7 +342,7 @@ export const Dashboard: React.FC = () => {
                                  <td className="px-6 py-4">
                                     <div className="font-semibold text-medical-dark">{product.name}</div>
                                     <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
-                                       <span className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {product.location?.aisle || '-'}</span>
+                                       <span className="flex items-center"><MapPin weight="bold" className="w-3 h-3 mr-1" /> {product.location?.aisle || '-'}</span>
                                        <span>•</span>
                                        <span>R$ {product.unitPrice?.toFixed(2)}</span>
                                     </div>
@@ -370,7 +369,7 @@ export const Dashboard: React.FC = () => {
                                       onClick={() => handleDeleteClick(product.id)}
                                       className="p-2 text-slate-300 hover:text-medical-danger hover:bg-red-50 rounded-lg transition-all"
                                     >
-                                       <Trash2 className="w-4 h-4" />
+                                       <Trash weight="duotone" className="w-4 h-4" />
                                     </button>
                                  </td>
                               </tr>
