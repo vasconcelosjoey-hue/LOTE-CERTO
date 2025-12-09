@@ -6,21 +6,21 @@ import {
   Camera, 
   CheckCircle2, 
   RefreshCcw, 
-  Scan,
+  ScanLine,
   X,
   PackageCheck,
   DollarSign,
   Plus,
   ArrowRight,
-  QrCode,
+  Maximize,
   MapPin,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { Toast } from '../components/Toast';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// Estados do fluxo de scanner
 type ScannerStep = 'idle' | 'camera' | 'review-photo' | 'processing' | 'result';
 
 interface ScannedData {
@@ -32,9 +32,9 @@ interface ScannedData {
   barcode: string;
   codeType: string;
   price: string;
-  quantity: string; // Novo input
-  aisle: string;    // Novo input
-  shelf: string;    // Novo input
+  quantity: string; 
+  aisle: string;    
+  shelf: string;    
   confidence: number;
   status: 'warning' | 'safe' | 'critical';
   daysRemaining: number;
@@ -48,21 +48,14 @@ export const Scanner: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedData | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
-  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Inicializa a câmera
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        } 
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
       });
       setStream(mediaStream);
       setStep('camera');
@@ -85,16 +78,12 @@ export const Scanner: React.FC = () => {
     }
   }, [step, stream]);
 
-  useEffect(() => {
-    return () => stopCamera();
-  }, []);
+  useEffect(() => { return () => stopCamera(); }, []);
 
   const generateInternalId = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let result = '';
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    for (let i = 0; i < 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
     return result;
   };
 
@@ -102,21 +91,17 @@ export const Scanner: React.FC = () => {
     const today = new Date();
     let status: 'safe' | 'warning' | 'critical' = 'safe';
     let diffDays = 0;
-    
     const parts = dateString.split('/');
     if (parts.length === 3) {
       const day = parseInt(parts[0]);
       const month = parseInt(parts[1]);
       const year = parseInt(parts[2]);
-      
       if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
         const expiry = new Date(year, month - 1, day);
         const diffTime = expiry.getTime() - today.getTime();
         diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
         if (diffDays <= 30) status = 'critical';
         else if (diffDays <= 90) status = 'warning';
-        
         return { status, diffDays };
       }
     }
@@ -145,9 +130,7 @@ export const Scanner: React.FC = () => {
   };
 
   const handleAddMorePhotos = () => {
-    if (capturedImages.length < 3) {
-      startCamera();
-    }
+    if (capturedImages.length < 3) startCamera();
   };
 
   const handleProcessImages = async () => {
@@ -158,38 +141,26 @@ export const Scanner: React.FC = () => {
   const processWithAI = async (images: string[]) => {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
       const parts: any[] = [{ text: "Analise as imagens fornecidas com extrema atenção." }];
-
       images.forEach((img) => {
-        parts.push({ 
-          inlineData: { 
-            mimeType: 'image/jpeg', 
-            data: img 
-          } 
-        });
+        parts.push({ inlineData: { mimeType: 'image/jpeg', data: img } });
       });
-
       parts.push({ 
-        text: `
-        Objetivo: Extrair dados de um produto farmacêutico ou hospitalar.
-        
-        1. Identifique QUALQUER tipo de código presente: Código de Barras (EAN-13, UPC), QR Code, Datamatrix (comum em remédios), etc.
-        2. Procure por textos de LOTE (Lot, L), VALIDADE (Val, Exp, Venc) e FABRICAÇÃO (Fab, Mfd). Atenção a textos em baixo/alto relevo.
-        3. Identifique o Nome do Produto, Dosagem e Preço (se houver etiqueta).
-
+        text: `Objetivo: Extrair dados de um produto farmacêutico ou hospitalar.
+        1. Identifique QUALQUER tipo de código presente: Código de Barras (EAN-13, UPC), QR Code, Datamatrix.
+        2. Procure por textos de LOTE (Lot, L), VALIDADE (Val, Exp, Venc) e FABRICAÇÃO (Fab, Mfd).
+        3. Identifique o Nome do Produto, Dosagem e Preço.
         Retorne APENAS um JSON:
         {
           "name": "Nome do produto completo",
           "lot": "Lote encontrado",
           "expiryDate": "DD/MM/YYYY",
           "manufactureDate": "DD/MM/YYYY",
-          "barcode": "Conteúdo numérico ou texto do código lido",
-          "codeType": "Tipo do código (ex: EAN-13, QR Code, Datamatrix, Desconhecido)",
-          "price": "Valor monetário encontrado (ex: 19.90)",
+          "barcode": "Conteúdo numérico",
+          "codeType": "Tipo do código",
+          "price": "Valor monetário encontrado",
           "confidence": número de 0 a 100
-        }
-        ` 
+        }` 
       });
 
       const response = await ai.models.generateContent({
@@ -200,7 +171,6 @@ export const Scanner: React.FC = () => {
 
       const resultText = response.text || "{}";
       const data = JSON.parse(resultText);
-
       const { status, diffDays } = calculateStatusAndDays(data.expiryDate || "");
       const newInternalId = generateInternalId();
 
@@ -213,16 +183,15 @@ export const Scanner: React.FC = () => {
         barcode: data.barcode || "",
         codeType: data.codeType || "Manual",
         price: data.price ? data.price.replace(',', '.') : "",
-        quantity: "1", // Default quantity
-        aisle: "",     // Default location
-        shelf: "",     // Default location
+        quantity: "1",
+        aisle: "",
+        shelf: "",
         confidence: data.confidence || 0,
         status: status,
         daysRemaining: diffDays,
         images: images
       });
       setStep('result');
-
     } catch (error) {
       console.error("Erro no OCR:", error);
       setScannedData({
@@ -248,20 +217,11 @@ export const Scanner: React.FC = () => {
 
   const handleDataChange = (field: keyof ScannedData, value: string) => {
     if (!scannedData) return;
-
     if (field === 'expiryDate') {
       const { status, diffDays } = calculateStatusAndDays(value);
-      setScannedData({
-        ...scannedData,
-        expiryDate: value,
-        status,
-        daysRemaining: diffDays
-      });
+      setScannedData({ ...scannedData, expiryDate: value, status, daysRemaining: diffDays });
     } else {
-      setScannedData({
-        ...scannedData,
-        [field]: value
-      });
+      setScannedData({ ...scannedData, [field]: value });
     }
   };
 
@@ -278,23 +238,15 @@ export const Scanner: React.FC = () => {
           manufactureDate: scannedData.manufactureDate,
           quantity: parseInt(scannedData.quantity) || 0,
           unitPrice: parseFloat(scannedData.price) || 0,
-          location: {
-            aisle: scannedData.aisle.toUpperCase(),
-            shelf: scannedData.shelf.toUpperCase()
-          },
+          location: { aisle: scannedData.aisle.toUpperCase(), shelf: scannedData.shelf.toUpperCase() },
           images: scannedData.images,
           codeType: scannedData.codeType,
-          // Valores padrão para a inteligência (podem ser editados depois)
           averageDailySales: 0,
           minStockLevel: 10
         };
-        
         await addDoc(collection(db, "products"), newProduct);
         setShowToast(true);
-        setTimeout(() => {
-          navigate('/dashboard'); // Changed from '/' to '/dashboard'
-        }, 1500);
-
+        setTimeout(() => { navigate('/dashboard'); }, 1500);
       } catch (error) {
         console.error("Erro ao salvar:", error);
         alert("Erro ao salvar produto. Tente novamente.");
@@ -316,327 +268,226 @@ export const Scanner: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-medical-dark flex flex-col">
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Header */}
-      <div className="px-4 py-4 flex items-center bg-slate-900/90 backdrop-blur-sm fixed w-full top-0 z-20 text-white border-b border-slate-700">
-        <button 
-          onClick={() => navigate('/dashboard')} 
-          className="mr-3 p-1 hover:bg-slate-700 rounded-full transition-colors"
-        >
+      {/* HEADER SCANNER */}
+      <div className="px-4 py-4 flex items-center bg-medical-dark/95 backdrop-blur-sm fixed w-full top-0 z-30 text-white border-b border-white/10">
+        <button onClick={() => navigate('/dashboard')} className="mr-3 p-1 hover:bg-white/10 rounded-full transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="bg-white/10 p-1.5 rounded-lg border border-white/10">
-            <PackageCheck className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight text-white leading-none">
-              LOTE <span className="font-light text-slate-300">CERTO</span>
-            </h1>
-          </div>
+          <ScanLine className="w-5 h-5 text-medical-primary" />
+          <h1 className="text-sm font-bold tracking-tight">Scanner Clínico</h1>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col justify-center items-center p-6 mt-16 pb-24 w-full">
         
-        {/* ESTADO INICIAL */}
+        {/* IDLE STATE */}
         {step === 'idle' && (
-          <div className="w-full max-w-sm flex flex-col items-center animate-fade-in space-y-4">
-            <div className="w-full aspect-video border-2 border-dashed border-slate-600 rounded-2xl flex flex-col items-center justify-center bg-slate-800/30 relative overflow-hidden group">
-              <Scan className="w-12 h-12 text-slate-500 mb-2 group-hover:scale-110 transition-transform" />
-              <p className="text-slate-400 text-sm">Posicione o produto</p>
+          <div className="w-full max-w-sm flex flex-col items-center animate-fade-in space-y-6">
+            <div className="w-full aspect-[4/3] border border-white/20 rounded-2xl flex flex-col items-center justify-center bg-white/5 relative overflow-hidden group hover:border-medical-primary/50 transition-colors">
+              <ScanLine className="w-16 h-16 text-white/30 mb-4" />
+              <p className="text-white/50 text-sm font-medium">Aguardando Produto</p>
             </div>
 
             <button
               onClick={startCamera}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-3 shadow-lg shadow-blue-900/50 transition-all active:scale-95"
+              className="w-full bg-medical-primary hover:bg-teal-600 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-3 shadow-lg shadow-teal-500/20 transition-all active:scale-95"
             >
               <Camera className="w-6 h-6" />
-              <span>INICIAR LEITURA</span>
+              <span>INICIAR LEITURA DE LOTE</span>
             </button>
             
-            <div className="mt-4 p-4 bg-slate-800 rounded-xl border border-slate-700 w-full">
-              <h3 className="text-white text-sm font-semibold mb-2 flex items-center">
-                <QrCode className="w-4 h-4 mr-2 text-blue-400" />
-                Suporte Universal
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                O sistema identifica códigos (EAN, Datamatrix) e extrai lote/validade automaticamente.
-              </p>
+            <div className="flex gap-4 text-xs text-white/40 justify-center">
+               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> EAN-13</span>
+               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Datamatrix</span>
             </div>
           </div>
         )}
 
-        {/* CÂMERA */}
+        {/* CAMERA VIEW */}
         {step === 'camera' && (
-          <div className="w-full max-w-md flex flex-col items-center relative h-[80vh]">
-            <div className="relative w-full h-full rounded-2xl overflow-hidden bg-black shadow-2xl">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                muted
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 border-[3px] border-white/30 rounded-2xl pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] h-64 border-2 border-white/80 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]">
-                  <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-500 -mt-0.5 -ml-0.5"></div>
-                  <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-500 -mt-0.5 -mr-0.5"></div>
-                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-500 -mb-0.5 -ml-0.5"></div>
-                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-500 -mb-0.5 -mr-0.5"></div>
+          <div className="w-full h-full fixed inset-0 z-20 bg-black flex flex-col">
+             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-80" />
+             
+             {/* OVERLAY */}
+             <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                <div className="w-[80%] aspect-square border-2 border-white/80 rounded-2xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.7)]">
+                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-medical-primary -mt-1 -ml-1"></div>
+                   <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-medical-primary -mt-1 -mr-1"></div>
+                   <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-medical-primary -mb-1 -ml-1"></div>
+                   <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-medical-primary -mb-1 -mr-1"></div>
+                   
+                   <div className="absolute top-4 left-0 right-0 text-center">
+                      <span className="bg-black/50 text-white text-xs px-3 py-1 rounded-full border border-white/20 backdrop-blur">
+                        Posicione o código ou data
+                      </span>
+                   </div>
                 </div>
-                
-                <div className="absolute top-6 w-full text-center px-4">
-                  <span className="bg-black/60 text-white px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-md border border-white/10 shadow-lg">
-                    Foto {capturedImages.length + 1} de 3
-                  </span>
-                  <p className="text-xs text-white/90 mt-2 drop-shadow-md font-medium">
-                    Enquadre código, lote ou validade
-                  </p>
-                </div>
-              </div>
+             </div>
 
-              <button 
-                onClick={handleCancelScan}
-                className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 backdrop-blur-sm z-30"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+             <div className="absolute top-4 right-4 z-40">
+                <button onClick={handleCancelScan} className="p-2 bg-black/40 text-white rounded-full backdrop-blur-md">
+                   <X className="w-6 h-6" />
+                </button>
+             </div>
 
-            <div className="absolute bottom-8 w-full px-8 z-30">
-              <button
-                onClick={handleCapture}
-                className="w-full bg-white text-slate-900 font-bold py-4 rounded-xl flex items-center justify-center space-x-2 shadow-lg hover:bg-slate-100 active:scale-95 transition-all"
-              >
-                <div className="w-6 h-6 rounded-full border-4 border-slate-900 mr-2"></div>
-                <span>CAPTURAR</span>
-              </button>
-            </div>
+             <div className="absolute bottom-10 inset-x-0 flex justify-center z-40 px-8">
+                <button onClick={handleCapture} className="w-20 h-20 bg-white rounded-full border-4 border-medical-primary/50 shadow-2xl flex items-center justify-center active:scale-90 transition-transform">
+                   <div className="w-16 h-16 bg-white rounded-full border-2 border-slate-200"></div>
+                </button>
+             </div>
+             
+             <div className="absolute bottom-36 inset-x-0 text-center z-40 text-white text-sm font-medium drop-shadow-md">
+                Foto {capturedImages.length + 1} de 3
+             </div>
           </div>
         )}
 
-        {/* REVISÃO DA FOTO */}
+        {/* REVIEW PHOTO */}
         {step === 'review-photo' && (
-          <div className="w-full max-w-sm animate-fade-in flex flex-col items-center">
-            <div className="bg-slate-800 p-6 rounded-2xl w-full border border-slate-700 shadow-2xl">
-              <div className="flex flex-col items-center text-center mb-6">
-                <div className="relative mb-4">
-                  <div className="w-20 h-20 bg-slate-700 rounded-lg overflow-hidden border-2 border-slate-600">
-                     {capturedImages.length > 0 && (
-                       <img src={`data:image/jpeg;base64,${capturedImages[capturedImages.length - 1]}`} className="w-full h-full object-cover" alt="Capture" />
-                     )}
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 bg-green-500 text-white rounded-full p-1 border-2 border-slate-800">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
+          <div className="w-full max-w-sm flex flex-col items-center animate-fade-in">
+             <div className="w-full bg-white rounded-2xl p-6 shadow-2xl">
+                <div className="w-full aspect-video bg-slate-100 rounded-xl overflow-hidden mb-6 border border-slate-200 relative">
+                   {capturedImages.length > 0 && <img src={`data:image/jpeg;base64,${capturedImages[capturedImages.length - 1]}`} className="w-full h-full object-cover" />}
+                   <div className="absolute bottom-2 right-2 bg-green-500 text-white p-1 rounded-full shadow-lg">
+                      <CheckCircle2 className="w-4 h-4" />
+                   </div>
                 </div>
                 
-                <h3 className="text-xl font-bold text-white mb-2">Foto {capturedImages.length} capturada!</h3>
-              </div>
+                <h3 className="text-center font-bold text-medical-dark text-lg mb-1">Imagem Capturada</h3>
+                <p className="text-center text-slate-400 text-xs mb-6">Certifique-se que os dados estão legíveis.</p>
 
-              <div className="space-y-3">
-                {capturedImages.length < 3 ? (
-                  <>
-                    <button
-                      onClick={handleAddMorePhotos}
-                      className="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center space-x-2 transition-colors border border-slate-600"
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span>Adicionar outra parte (Frente/Lado)</span>
-                    </button>
-                    <button
-                      onClick={handleProcessImages}
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl flex items-center justify-center space-x-2 transition-colors shadow-lg"
-                    >
-                      <span>Processar Imagens</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
-                  <div className="text-center">
-                    <p className="text-yellow-400 text-sm mb-3 font-medium">Limite de 3 fotos atingido.</p>
-                    <button
-                      onClick={handleProcessImages}
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl flex items-center justify-center space-x-2 transition-colors shadow-lg"
-                    >
-                      <span>Processar Agora</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+                <div className="space-y-3">
+                   {capturedImages.length < 3 && (
+                      <button onClick={handleAddMorePhotos} className="w-full py-3 rounded-lg border border-medical-primary text-medical-primary font-semibold text-sm hover:bg-teal-50 transition-colors">
+                         + Adicionar outro ângulo
+                      </button>
+                   )}
+                   <button onClick={handleProcessImages} className="w-full py-3 rounded-lg bg-medical-primary text-white font-bold text-sm shadow-lg hover:bg-teal-600 transition-colors flex items-center justify-center gap-2">
+                      Processar Imagens <ArrowRight className="w-4 h-4" />
+                   </button>
+                </div>
+             </div>
           </div>
         )}
 
-        {/* PROCESSAMENTO */}
+        {/* PROCESSING */}
         {step === 'processing' && (
-          <div className="w-full max-w-sm flex flex-col items-center justify-center h-64">
-            <div className="relative">
-               <div className="w-20 h-20 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-               <div className="absolute inset-0 flex items-center justify-center">
-                 <Scan className="w-8 h-8 text-blue-500 animate-pulse" />
-               </div>
-            </div>
-            <h3 className="mt-6 text-xl font-bold text-white">Processando...</h3>
+          <div className="flex flex-col items-center justify-center">
+             <div className="relative w-24 h-24">
+                <div className="absolute inset-0 border-4 border-white/10 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-medical-primary border-t-transparent rounded-full animate-spin"></div>
+                <ScanLine className="absolute inset-0 m-auto w-8 h-8 text-white animate-pulse" />
+             </div>
+             <p className="mt-8 text-white font-medium tracking-wide animate-pulse">ANALISANDO DADOS CLÍNICOS...</p>
           </div>
         )}
 
-        {/* RESULTADO (FORMULÁRIO DE EDIÇÃO) */}
+        {/* RESULT FORM */}
         {step === 'result' && scannedData && (
-          <div className="w-full max-w-sm animate-fade-in-up">
-            <div className="bg-white rounded-2xl p-6 shadow-xl mb-6">
-              
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-slate-900">Validar Informações</h3>
-                <div className="flex items-center space-x-2">
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full border flex items-center ${
-                    scannedData.status === 'critical' ? 'bg-red-100 text-red-800 border-red-200' :
-                    scannedData.status === 'warning' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                    'bg-green-100 text-green-800 border-green-200'
-                  }`}>
-                    {scannedData.status === 'critical' ? 'Crítico (D-30)' : 
-                     scannedData.status === 'warning' ? 'Atenção (D-90)' : 'OK'}
-                  </span>
-                </div>
-              </div>
-
-               {/* Miniaturas */}
-               <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                {capturedImages.map((img, idx) => (
-                  <div key={idx} className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden flex-shrink-0">
-                    <img src={`data:image/jpeg;base64,${img}`} className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-
-              {/* CAMPOS EDITÁVEIS - GRID */}
-              <div className="grid grid-cols-12 gap-3">
-                
-                {/* Nome (12 cols) */}
-                <div className="col-span-12">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Nome do Produto</label>
-                  <input 
-                    type="text" 
-                    value={scannedData.name}
-                    onChange={(e) => handleDataChange('name', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-900 font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
+          <div className="w-full max-w-md animate-fade-in-up pb-10">
+             <div className="bg-white rounded-t-2xl p-6 shadow-2xl border-b border-slate-100">
+                <div className="flex justify-between items-start mb-4">
+                   <h3 className="font-bold text-medical-dark text-lg">Validação de Lote</h3>
+                   <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                      scannedData.status === 'critical' ? 'bg-red-50 text-red-700 border-red-100' : 
+                      scannedData.status === 'warning' ? 'bg-yellow-50 text-yellow-700 border-yellow-100' : 
+                      'bg-green-50 text-green-700 border-green-100'
+                   }`}>
+                      {scannedData.status === 'critical' ? 'CRÍTICO' : scannedData.status === 'warning' ? 'ATENÇÃO' : 'APROVADO'}
+                   </span>
                 </div>
 
-                {/* Lote (6 cols) */}
-                <div className="col-span-6">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Lote</label>
-                  <input 
-                    type="text" 
-                    value={scannedData.manufacturerLot}
-                    onChange={(e) => handleDataChange('manufacturerLot', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-slate-900 text-sm"
-                  />
+                {/* IMAGENS MINI */}
+                <div className="flex gap-2 overflow-x-auto pb-4 mb-2">
+                   {capturedImages.map((img, idx) => (
+                      <div key={idx} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden flex-shrink-0">
+                         <img src={`data:image/jpeg;base64,${img}`} className="w-full h-full object-cover" />
+                      </div>
+                   ))}
                 </div>
 
-                {/* Validade (6 cols) */}
-                <div className="col-span-6">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Validade</label>
-                  <input 
-                    type="text" 
-                    value={scannedData.expiryDate}
-                    onChange={(e) => handleDataChange('expiryDate', e.target.value)}
-                    placeholder="DD/MM/AAAA"
-                    className={`w-full border rounded-lg py-2 px-3 font-bold text-sm outline-none ${
-                      scannedData.status === 'critical' ? 'border-red-300 text-red-700 bg-red-50' : 'border-slate-200'
-                    }`}
-                  />
-                </div>
-
-                {/* DIVISOR DE LOCALIZAÇÃO */}
-                <div className="col-span-12 mt-2 mb-1 border-t border-slate-100 pt-2">
-                  <p className="text-xs font-bold text-slate-700 flex items-center">
-                    <MapPin className="w-3 h-3 mr-1 text-blue-500" /> Endereçamento & Estoque
-                  </p>
-                </div>
-
-                {/* Localização (Corredor/Prateleira) */}
-                <div className="col-span-4">
-                  <label className="block text-[10px] font-medium text-slate-500 mb-1">Corredor</label>
-                  <input 
-                    type="text" 
-                    value={scannedData.aisle}
-                    onChange={(e) => handleDataChange('aisle', e.target.value)}
-                    placeholder="Ex: A1"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 text-center text-sm font-bold uppercase"
-                  />
-                </div>
-                <div className="col-span-4">
-                  <label className="block text-[10px] font-medium text-slate-500 mb-1">Prateleira</label>
-                  <input 
-                    type="text" 
-                    value={scannedData.shelf}
-                    onChange={(e) => handleDataChange('shelf', e.target.value)}
-                    placeholder="Ex: P2"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 text-center text-sm font-bold uppercase"
-                  />
-                </div>
-
-                {/* Quantidade */}
-                <div className="col-span-4">
-                  <label className="block text-[10px] font-medium text-slate-500 mb-1">Qtd (Un)</label>
-                  <input 
-                    type="number" 
-                    value={scannedData.quantity}
-                    onChange={(e) => handleDataChange('quantity', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 text-center text-sm font-bold text-blue-700"
-                  />
-                </div>
-
-                {/* Preço de Custo */}
-                 <div className="col-span-12">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Preço Unitário (R$) - Para cálculo de perda</label>
-                    <div className="relative">
-                       <input 
-                        type="text" 
-                        value={scannedData.price}
-                        onChange={(e) => handleDataChange('price', e.target.value)}
-                        placeholder="0.00"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-3 pr-2 text-slate-900 font-mono text-sm"
+                <div className="space-y-4">
+                   <div className="group">
+                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Produto</label>
+                      <input 
+                         type="text" 
+                         value={scannedData.name} 
+                         onChange={(e) => handleDataChange('name', e.target.value)}
+                         className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-semibold text-medical-dark focus:ring-2 focus:ring-medical-primary outline-none transition-all" 
                       />
-                       <DollarSign className="w-3 h-3 text-slate-400 absolute right-2 top-3 pointer-events-none" />
-                    </div>
-                  </div>
+                   </div>
 
-              </div>
-            </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                         <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Lote</label>
+                         <input 
+                            type="text" 
+                            value={scannedData.manufacturerLot} 
+                            onChange={(e) => handleDataChange('manufacturerLot', e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-mono text-medical-dark" 
+                         />
+                      </div>
+                      <div>
+                         <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Validade</label>
+                         <input 
+                            type="text" 
+                            value={scannedData.expiryDate} 
+                            onChange={(e) => handleDataChange('expiryDate', e.target.value)}
+                            className={`w-full border rounded-lg p-3 text-sm font-bold outline-none ${
+                               scannedData.status === 'critical' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-200 text-medical-dark'
+                            }`} 
+                         />
+                      </div>
+                   </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button 
-                onClick={handleRescan}
-                disabled={isSaving}
-                className="flex items-center justify-center space-x-2 bg-slate-800 text-white py-3 rounded-xl font-medium hover:bg-slate-700 transition-colors disabled:opacity-50"
-              >
-                <RefreshCcw className="w-4 h-4" />
-                <span>Reiniciar</span>
-              </button>
-              <button 
-                onClick={handleConfirm}
-                disabled={isSaving}
-                className="flex items-center justify-center space-x-2 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-500 shadow-lg shadow-green-900/20 transition-all active:scale-95 disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                <span>{isSaving ? 'Salvando...' : 'Salvar & Controlar'}</span>
-              </button>
-            </div>
+                   <div className="border-t border-slate-100 pt-4 mt-2">
+                      <p className="text-xs font-bold text-medical-primary flex items-center mb-3">
+                         <MapPin className="w-3 h-3 mr-1" /> Logística Interna
+                      </p>
+                      <div className="grid grid-cols-3 gap-3">
+                         <div>
+                            <label className="text-[10px] text-slate-400 font-bold block mb-1">Corredor</label>
+                            <input type="text" value={scannedData.aisle} onChange={(e) => handleDataChange('aisle', e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-center font-bold text-sm" placeholder="A1" />
+                         </div>
+                         <div>
+                            <label className="text-[10px] text-slate-400 font-bold block mb-1">Prateleira</label>
+                            <input type="text" value={scannedData.shelf} onChange={(e) => handleDataChange('shelf', e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-center font-bold text-sm" placeholder="P2" />
+                         </div>
+                         <div>
+                            <label className="text-[10px] text-slate-400 font-bold block mb-1">Qtd</label>
+                            <input type="number" value={scannedData.quantity} onChange={(e) => handleDataChange('quantity', e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-center font-bold text-sm text-blue-600" />
+                         </div>
+                      </div>
+                   </div>
+                   
+                   <div>
+                       <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Preço Unitário (R$)</label>
+                       <div className="relative">
+                          <DollarSign className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                          <input type="text" value={scannedData.price} onChange={(e) => handleDataChange('price', e.target.value)} className="w-full pl-9 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-mono text-medical-dark" placeholder="0.00" />
+                       </div>
+                   </div>
+                </div>
+             </div>
+             
+             <div className="bg-slate-50 p-4 rounded-b-2xl border-x border-b border-slate-200 grid grid-cols-2 gap-4">
+                <button onClick={handleRescan} disabled={isSaving} className="py-3 rounded-lg border border-slate-300 text-slate-600 font-semibold text-sm hover:bg-slate-100 transition-colors">
+                   Reiniciar
+                </button>
+                <button onClick={handleConfirm} disabled={isSaving} className="py-3 rounded-lg bg-medical-primary text-white font-bold text-sm shadow-md hover:bg-teal-600 transition-colors flex items-center justify-center gap-2">
+                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                   {isSaving ? 'Registrando...' : 'Confirmar Lote'}
+                </button>
+             </div>
           </div>
         )}
       </div>
 
-      <Toast 
-        message="Lote salvo no Firebase com sucesso!" 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
-      />
+      <Toast message="Lote registrado com sucesso no sistema clínico." isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );
 };

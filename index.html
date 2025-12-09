@@ -3,15 +3,30 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-    <title>LOTE CERTO</title>
+    <title>LOTE CERTO | Gestão Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+            },
             colors: {
-              primary: '#0ea5e9', // Sky 500
-              secondary: '#64748b', // Slate 500
+              medical: {
+                primary: '#1ABC9C', // Verde Profissional (Ação, Segurança)
+                dark: '#2C3E50',    // Azul Clínico (Textos, Cabeçalhos)
+                gray: '#ECF0F1',    // Fundo Neutro
+                text: '#2D3436',    // Preto Suave
+                surface: '#FFFFFF', // Branco Puro
+                danger: '#E74C3C',  // Vermelho Clínico
+                warning: '#F1C40F', // Amarelo Alerta
+                success: '#2ECC71', // Verde Sucesso
+              }
+            },
+            boxShadow: {
+              'soft': '0 4px 20px -2px rgba(44, 62, 80, 0.05)',
+              'card': '0 0 0 1px rgba(44, 62, 80, 0.05), 0 2px 8px rgba(44, 62, 80, 0.05)',
             }
           }
         }
@@ -33,7 +48,7 @@
 }
 </script>
 </head>
-  <body class="bg-slate-50 text-slate-900 antialiased">
+  <body class="bg-medical-gray text-medical-text antialiased selection:bg-medical-primary selection:text-white">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
